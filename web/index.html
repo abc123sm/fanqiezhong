@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>番茄钟状态</title>
+    <style>
+        body {
+            background-color: #000;
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            overflow: hidden; /* No scrollbars for OBS */
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 100%;
+            max-width: 600px;
+        }
+        .row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            height: 40px;
+        }
+        .progress-container {
+            flex-grow: 1;
+            height: 20px;
+            background-color: #333;
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+        .progress-bar {
+            height: 100%;
+            background-color: #4CAF50; /* Green */
+            width: 0%;
+            transition: width 0.5s linear;
+        }
+        .meso-bar {
+            background-color: #2196F3; /* Blue */
+        }
+        .time-label {
+            font-size: 24px;
+            font-weight: bold;
+            min-width: 100px;
+            text-align: right;
+            font-variant-numeric: tabular-nums; /* Monospaced numbers */
+        }
+        .hidden {
+            display: none;
+        }
+        /* Custom scrollbar just in case */
+        ::-webkit-scrollbar {
+            width: 0px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Row 1: Current Cycle -->
+        <div class="row" id="row-current">
+            <div class="progress-container">
+                <div class="progress-bar" id="bar-current"></div>
+            </div>
+            <div class="time-label" id="time-current">00:00</div>
+        </div>
+
+        <!-- Row 2: Meso Cycle (Optional) -->
+        <div class="row hidden" id="row-meso">
+            <div class="progress-container">
+                <div class="progress-bar meso-bar" id="bar-meso"></div>
+            </div>
+            <div class="time-label" id="time-meso">00:00</div>
+        </div>
+    </div>
+
+    <script>
+        function formatTime(seconds) {
+            if (seconds < 0) seconds = 0;
+            const m = Math.floor(seconds / 60);
+            const s = Math.floor(seconds % 60);
+            return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+        }
+
+        async function updateStatus() {
+            try {
+                const response = await fetch('/status');
+                const data = await response.json();
+
+                // Current Cycle
+                const currentTotal = data.current_total;
+                const currentElapsed = data.current_elapsed;
+                const currentRemaining = Math.max(0, currentTotal - currentElapsed);
+                
+                const currentPercent = currentTotal > 0 ? (currentElapsed / currentTotal) * 100 : 100;
+                
+                document.getElementById('bar-current').style.width = `${currentPercent}%`;
+                document.getElementById('time-current').innerText = formatTime(currentRemaining);
+
+                // Meso Cycle
+                const rowMeso = document.getElementById('row-meso');
+                if (data.in_meso) {
+                    rowMeso.classList.remove('hidden');
+                    const mesoTotal = data.meso_total;
+                    const mesoElapsed = data.meso_elapsed;
+                    const mesoRemaining = Math.max(0, mesoTotal - mesoElapsed);
+                    
+                    const mesoPercent = mesoTotal > 0 ? (mesoElapsed / mesoTotal) * 100 : 100;
+                    
+                    document.getElementById('bar-meso').style.width = `${mesoPercent}%`;
+                    document.getElementById('time-meso').innerText = formatTime(mesoRemaining);
+                } else {
+                    rowMeso.classList.add('hidden');
+                }
+
+            } catch (error) {
+                console.error('Error fetching status:', error);
+            }
+        }
+
+        // Update every 500ms
+        setInterval(updateStatus, 500);
+        updateStatus();
+    </script>
+</body>
+</html>
