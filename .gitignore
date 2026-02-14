@@ -1,0 +1,8 @@
+time_clock_gui_only.exe
+time_clock_gui_web.exe
+time_clock_term_only.exe
+time_clock_term_web.exe
+.trae
+build.ps1
+.vscode/settings.json
+time_clock.exe

@@ -7,7 +7,7 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
-	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/gopxl/beep/v2"
@@ -27,21 +27,17 @@ type Config struct {
 	Port          int `json:"端口"`
 }
 
-type GlobalState struct {
-	sync.Mutex
-	CurrentStartTime time.Time
-	CurrentDuration  time.Duration
-
-	MesoStartTime time.Time
-	MesoDuration  time.Duration
-	InMeso        bool
-}
-
 var (
 	config        Config
 	sampleRate    beep.SampleRate = 44100
-	speakerInited bool
-	state         GlobalState
+	speakerInited int32           // 原子访问: 0=false, 1=true
+
+	// 无锁状态变量 - 使用int64纳秒时间戳
+	currentStartNano int64 // Unix纳秒时间戳
+	currentDuration  int64 // 纳秒
+	mesoStartNano    int64
+	mesoDuration     int64
+	inMeso           int32 // 0=false, 1=true
 )
 
 func main() {
@@ -83,7 +79,7 @@ func main() {
 			msg := fmt.Sprintf("音频初始化警告: %v", err)
 			fmt.Println(msg)
 		} else {
-			speakerInited = true
+			atomic.StoreInt32(&speakerInited, 1)
 			log.Println("音频初始化成功")
 		}
 	}()
@@ -308,10 +304,10 @@ func playSound(path string) {
 		s = beep.Resample(4, format.SampleRate, sampleRate, streamer)
 	}
 
-	if !speakerInited {
+	if atomic.LoadInt32(&speakerInited) == 0 {
 		// 尝试初始化（应该已经在 main 中完成，但以防万一）
 		speaker.Init(sampleRate, sampleRate.N(time.Second/10))
-		speakerInited = true
+		atomic.StoreInt32(&speakerInited, 1)
 	}
 
 	done := make(chan bool)
@@ -322,26 +318,20 @@ func playSound(path string) {
 	<-done
 }
 
-// 状态管理辅助函数
+// 状态管理辅助函数 - 无锁实现
 func setCurrentTask(duration time.Duration) {
-	state.Lock()
-	state.CurrentStartTime = time.Now()
-	state.CurrentDuration = duration
-	state.Unlock()
+	atomic.StoreInt64(&currentStartNano, time.Now().UnixNano())
+	atomic.StoreInt64(&currentDuration, int64(duration))
 }
 
 func setMesoTask(duration time.Duration) {
-	state.Lock()
-	state.MesoStartTime = time.Now()
-	state.MesoDuration = duration
-	state.InMeso = true
-	state.Unlock()
+	atomic.StoreInt64(&mesoStartNano, time.Now().UnixNano())
+	atomic.StoreInt64(&mesoDuration, int64(duration))
+	atomic.StoreInt32(&inMeso, 1)
 }
 
 func clearMesoTask() {
-	state.Lock()
-	state.InMeso = false
-	state.Unlock()
+	atomic.StoreInt32(&inMeso, 0)
 }
 
 func wait(duration time.Duration) {
