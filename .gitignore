@@ -1,5 +1,4 @@
 *.zip
 .trae
-build.ps1
 .vscode/settings.json
-time_clock.exe
+
