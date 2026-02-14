@@ -1,4 +1,4 @@
 *.zip
 .trae
 .vscode/settings.json
-
+dist/

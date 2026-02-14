@@ -199,85 +199,31 @@ func planMesoSchedule(targetTotal time.Duration) []time.Duration {
 	minDur := base - offset
 	maxDur := base + offset
 
-	// 在 [目标秒数, 目标秒数+60] 范围内随机选择一个实际目标总时间
-	actualTarget := targetSec + rand.Intn(61)
+	var durations []time.Duration
+	currentTotal := 0
 
-	// 确定可行的小循环个数 N 的范围
-	// N * minDur + (N-1)*rest <= actualTarget
-	// N * maxDur + (N-1)*rest >= actualTarget
+	// 循环生成直到总时间达到目标
+	for {
+		// 在 [minDur, maxDur] 范围内完全随机
+		d := minDur + rand.Intn(maxDur-minDur+1)
+		durations = append(durations, time.Duration(d)*time.Second)
+		currentTotal += d
 
-	var validN []int
-	// 估算 N ≈ actualTarget / (base + rest)
-	estN := actualTarget / (base + rest)
-
-	// 在估算值附近搜索
-	for n := estN - 5; n <= estN+5; n++ {
-		if n <= 0 {
-			continue
-		}
-		minTotal := n*minDur + (n-1)*rest
-		maxTotal := n*maxDur + (n-1)*rest
-
-		if actualTarget >= minTotal && actualTarget <= maxTotal {
-			validN = append(validN, n)
-		}
-	}
-
-	if len(validN) == 0 {
-		// 备用方案：使用估算值，强制适配
-		validN = append(validN, estN)
-	}
-
-	// 从有效选项中随机选择一个 N
-	n := validN[rand.Intn(len(validN))]
-
-	// 生成前 N-1 个循环的随机时长
-	// 最后一个循环将承担剩余时间
-	durations := make([]time.Duration, n)
-
-	// 尝试生成一组有效的时长，使最后一个循环也在范围内
-	// 我们会重试几次以获得良好的分布
-	bestDurations := make([]time.Duration, n)
-	bestDiff := 1000000 // 最小化最后一个循环与有效范围的偏差
-
-	for attempt := 0; attempt < 100; attempt++ {
-		currentSum := 0
-		for i := 0; i < n-1; i++ {
-			// 在 [minDur, maxDur] 范围内完全随机
-			d := minDur + rand.Intn(maxDur-minDur+1)
-			durations[i] = time.Duration(d) * time.Second
-			currentSum += d
+		// 如果当前累加时间已经 >= 目标，停止
+		if currentTotal >= targetSec {
+			break
 		}
 
-		// 计算最后一个循环所需的时长
-		// 总时间 = Sum(前 N-1) + 最后一个 + (N-1)*Rest = ActualTarget
-		// 最后一个 = ActualTarget - (N-1)*Rest - Sum
-		requiredLast := actualTarget - (n-1)*rest - currentSum
+		// 加上休息时间用于下一次判断
+		currentTotal += rest
 
-		durations[n-1] = time.Duration(requiredLast) * time.Second
-
-		// 检查最后一个是否在范围内
-		if requiredLast >= minDur && requiredLast <= maxDur {
-			// 找到完美组合
-			return durations
-		}
-
-		// 如果不完美，记录偏差
-		diff := 0
-		if requiredLast < minDur {
-			diff = minDur - requiredLast
-		} else {
-			diff = requiredLast - maxDur
-		}
-
-		if diff < bestDiff {
-			bestDiff = diff
-			copy(bestDurations, durations)
+		// 再次检查
+		if currentTotal >= targetSec {
+			break
 		}
 	}
 
-	// 如果没有找到完美组合，使用最佳组合（最接近有效范围）
-	return bestDurations
+	return durations
 }
 
 func playSound(path string) {
