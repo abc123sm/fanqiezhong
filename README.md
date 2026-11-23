@@ -2,7 +2,8 @@
 
 这是一个基于神经可塑性原理设计的极简番茄钟程序，专为 OBS 直播或个人深度工作设计。
 
-> **设计灵感**：本项目参考了 Andrew Huberman 的文章 [Teach & Learn Better With a “Neuroplasticity Super Protocol”](https://www.hubermanlab.com/newsletter/teach-and-learn-better-with-a-neuroplasticity-super-protocol)，旨在通过科学的随机休息间隔提高学习和工作效率。
+> **设计灵感与科学依据**：本项目参考了 Andrew Huberman 博士的公开文章 [Teach & Learn Better With a “Neuroplasticity Super Protocol”](https://www.hubermanlab.com/newsletter/teach-and-learn-better-with-a-neuroplasticity-super-protocol)，通过科学的随机微休息间隔（间隙效应）、90 分钟超日节律边界与 NSDR 长休息窗口提升学习与深度工作效率。
+> 📖 详细的九步核心原理提炼、程序参数映射及配套实战指南请参阅：**[《神经可塑性超级协议与设计映射》](./docs/neuroplasticity-protocol.md)**。
 
 ## ✨ 核心特性
 
@@ -24,7 +25,7 @@
 
 ## 🚀 版本选择
 
-我们提供了 5 种不同的版本，以适应不同的使用场景。下载压缩包后解压即可使用。
+我们提供了 5 种独立运行模式，既可按需下载对应的单模式压缩包，也可直接下载包含全部 5 种模式可执行文件的**全量合集包 (`time_clock_all.zip`)**（共用同一份配置与音效，方便随时切换）。下载压缩包后解压即可使用。
 
 ### 1. 纯净窗口版 (`time_clock_gui_only`) - **推荐个人使用**
 *   **包含文件**：`time_clock_gui_only.exe`
@@ -91,7 +92,7 @@
 # 运行全量单元测试
 go test -tags "gui,web" -v ./...
 
-# 运行构建脚本 (自动编译打包全部 5 个版本到 dist 目录)
+# 运行构建脚本 (隔离编译打包 5 个单模式包 + 1 个全模式合集包到 dist 目录，仅清理旧 zip)
 .\build.ps1
 ```
 
