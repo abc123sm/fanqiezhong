@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>番茄钟控制</title>
+    <style>
+        body {
+            background-color: #121212;
+            color: #f0f0f0;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        .card {
+            background-color: #1e1e1e;
+            border: 1px solid #333;
+            border-radius: 10px;
+            padding: 28px;
+            width: 320px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+        }
+        .preview {
+            margin-bottom: 24px;
+        }
+        .bar-wrap {
+            height: 14px;
+            background: #333;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+        .bar-fill {
+            height: 100%;
+            width: 0%;
+            background: #4CAF50;
+        }
+        .timer-num {
+            font-size: 32px;
+            font-weight: 700;
+            text-align: center;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: 1px;
+        }
+        .actions {
+            display: flex;
+            gap: 12px;
+        }
+        button {
+            flex: 1;
+            padding: 12px 14px;
+            font-size: 15px;
+            font-weight: 600;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: opacity 0.15s ease;
+        }
+        button:hover {
+            opacity: 0.88;
+        }
+        button:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        .btn-reset {
+            background-color: #2196F3;
+            color: #fff;
+        }
+        .btn-quit {
+            background-color: #e53935;
+            color: #fff;
+        }
+        .msg {
+            margin-top: 14px;
+            font-size: 13px;
+            color: #aaa;
+            text-align: center;
+            min-height: 18px;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="preview">
+            <div class="bar-wrap">
+                <div class="bar-fill" id="bar"></div>
+            </div>
+            <div class="timer-num" id="clock">00:00</div>
+        </div>
+        <div class="actions">
+            <button class="btn-reset" id="btn-reset">从 0 重新开始</button>
+            <button class="btn-quit" id="btn-quit">退出程序</button>
+        </div>
+        <div class="msg" id="msg"></div>
+    </div>
+
+    <script>
+        const COLORS = {
+            focus: '#4CAF50',
+            micro_rest: '#FFB300',
+            meso_rest: '#26C6DA',
+            macro_rest: '#AB47BC'
+        };
+        const bar = document.getElementById('bar');
+        const clock = document.getElementById('clock');
+        const msg = document.getElementById('msg');
+        const btnReset = document.getElementById('btn-reset');
+        const btnQuit = document.getElementById('btn-quit');
+
+        let snap = null;
+        let basePerf = 0;
+        let exited = false;
+
+        function fmt(sec) {
+            const s = Math.max(0, Math.floor(sec));
+            return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+        }
+
+        function tick() {
+            if (snap && !exited) {
+                const dt = Math.max(0, (performance.now() - basePerf) / 1000);
+                const total = snap.current_total || 0;
+                const elapsed = Math.min(total, (snap.current_elapsed || 0) + dt);
+                bar.style.width = `${(total > 0 ? (elapsed / total) * 100 : 100).toFixed(2)}%`;
+                clock.textContent = fmt(total - elapsed);
+            }
+            requestAnimationFrame(tick);
+        }
+
+        const es = new EventSource('/events');
+        es.onmessage = (e) => {
+            snap = JSON.parse(e.data);
+            basePerf = performance.now();
+            bar.style.backgroundColor = COLORS[snap.phase] || COLORS.focus;
+        };
+
+        btnReset.addEventListener('click', async () => {
+            msg.textContent = '';
+            const r = await fetch('/api/reset', { method: 'POST' });
+            if (r.ok) {
+                msg.textContent = '已从 0 重新开始';
+            }
+        });
+
+        btnQuit.addEventListener('click', async () => {
+            btnReset.disabled = true;
+            btnQuit.disabled = true;
+            try {
+                await fetch('/api/quit', { method: 'POST' });
+            } catch (_) {}
+            exited = true;
+            es.close();
+            msg.textContent = '番茄钟进程已安全退出，可关闭此页面';
+        });
+
+        requestAnimationFrame(tick);
+    </script>
+</body>
+</html>

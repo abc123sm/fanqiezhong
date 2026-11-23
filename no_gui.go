@@ -7,7 +7,7 @@ import (
 	"log"
 )
 
-func startGUIOrBlock() {
-	log.Println("运行在终端模式（阻塞中）")
-	select {}
+func startGUIOrBlock(engine *TimerEngine) {
+	log.Println("运行在无窗口/终端模式（等待退出信号）")
+	<-engine.Context().Done()
 }

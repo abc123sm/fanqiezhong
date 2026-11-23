@@ -1,4 +1,4 @@
-# 清理旧的构建文件
+﻿# 清理旧的构建文件
 Remove-Item -Path "*.exe" -ErrorAction SilentlyContinue
 Remove-Item -Path "dist" -Recurse -Force -ErrorAction SilentlyContinue
 

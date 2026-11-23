@@ -3,6 +3,6 @@
 
 package main
 
-func startWebServerIfNeeded() {
+func startWebServerIfNeeded(_ *TimerEngine) {
 	// 无 Web 服务器
 }

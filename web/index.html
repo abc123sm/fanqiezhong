@@ -6,12 +6,12 @@
     <title>番茄钟状态</title>
     <style>
         body {
-            background-color: #000;
+            background-color: transparent;
             color: #fff;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
             padding: 20px;
-            overflow: hidden; /* No scrollbars for OBS */
+            overflow: hidden;
         }
         .container {
             display: flex;
@@ -29,31 +29,31 @@
         .progress-container {
             flex-grow: 1;
             height: 20px;
-            background-color: #333;
+            background-color: rgba(40, 40, 40, 0.78);
             border-radius: 4px;
             overflow: hidden;
             position: relative;
         }
         .progress-bar {
             height: 100%;
-            background-color: #4CAF50; /* Green */
+            background-color: #4CAF50;
             width: 0%;
-            transition: width 0.5s linear;
+            will-change: width;
         }
         .meso-bar {
-            background-color: #2196F3; /* Blue */
+            background-color: #2196F3;
         }
         .time-label {
             font-size: 24px;
             font-weight: bold;
-            min-width: 100px;
+            min-width: 90px;
             text-align: right;
-            font-variant-numeric: tabular-nums; /* Monospaced numbers */
+            font-variant-numeric: tabular-nums;
+            text-shadow: 0 1px 4px rgba(0, 0, 0, 0.85), 0 0 2px rgba(0, 0, 0, 0.95);
         }
         .hidden {
             display: none;
         }
-        /* Custom scrollbar just in case */
         ::-webkit-scrollbar {
             width: 0px;
         }
@@ -61,7 +61,6 @@
 </head>
 <body>
     <div class="container">
-        <!-- Row 1: Current Cycle -->
         <div class="row" id="row-current">
             <div class="progress-container">
                 <div class="progress-bar" id="bar-current"></div>
@@ -69,7 +68,6 @@
             <div class="time-label" id="time-current">00:00</div>
         </div>
 
-        <!-- Row 2: Meso Cycle (Optional) -->
         <div class="row hidden" id="row-meso">
             <div class="progress-container">
                 <div class="progress-bar meso-bar" id="bar-meso"></div>
@@ -79,52 +77,106 @@
     </div>
 
     <script>
+        // 支持通过 ?bg=000 或 ?bg=black 指定背景色，默认保持原生透明以适配 OBS 叠加
+        (function applyOptionalBackground() {
+            const params = new URLSearchParams(window.location.search);
+            const bg = params.get('bg');
+            if (bg) {
+                if (bg === 'transparent') {
+                    document.body.style.backgroundColor = 'transparent';
+                } else if (/^[0-9a-fA-F]{3,8}$/.test(bg)) {
+                    document.body.style.backgroundColor = '#' + bg;
+                } else {
+                    document.body.style.backgroundColor = bg;
+                }
+            }
+        })();
+
+        const PHASE_COLORS = {
+            focus: '#4CAF50',
+            micro_rest: '#FFB300',
+            meso_rest: '#26C6DA',
+            macro_rest: '#AB47BC'
+        };
+
+        const barCurrent = document.getElementById('bar-current');
+        const timeCurrent = document.getElementById('time-current');
+        const rowMeso = document.getElementById('row-meso');
+        const barMeso = document.getElementById('bar-meso');
+        const timeMeso = document.getElementById('time-meso');
+
+        let snapshot = null;
+        let snapshotPerfTime = 0;
+
         function formatTime(seconds) {
             if (seconds < 0) seconds = 0;
-            const m = Math.floor(seconds / 60);
-            const s = Math.floor(seconds % 60);
+            const totalSec = Math.floor(seconds);
+            const m = Math.floor(totalSec / 60);
+            const s = totalSec % 60;
             return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
         }
 
-        async function updateStatus() {
-            try {
-                const response = await fetch('/status');
-                const data = await response.json();
+        function applySnapshot(data) {
+            snapshot = data;
+            snapshotPerfTime = performance.now();
+            const color = PHASE_COLORS[data.phase] || PHASE_COLORS.focus;
+            barCurrent.style.backgroundColor = color;
+            renderFrame();
+        }
 
-                // Current Cycle
-                const currentTotal = data.current_total;
-                const currentElapsed = data.current_elapsed;
-                const currentRemaining = Math.max(0, currentTotal - currentElapsed);
-                
-                const currentPercent = currentTotal > 0 ? (currentElapsed / currentTotal) * 100 : 100;
-                
-                document.getElementById('bar-current').style.width = `${currentPercent}%`;
-                document.getElementById('time-current').innerText = formatTime(currentRemaining);
+        function renderFrame() {
+            if (snapshot) {
+                const deltaSec = Math.max(0, (performance.now() - snapshotPerfTime) / 1000);
 
-                // Meso Cycle
-                const rowMeso = document.getElementById('row-meso');
-                if (data.in_meso) {
+                const curTotal = snapshot.current_total || 0;
+                const curElapsed = Math.min(curTotal, (snapshot.current_elapsed || 0) + deltaSec);
+                const curRemaining = Math.max(0, curTotal - curElapsed);
+                const curPercent = curTotal > 0 ? (curElapsed / curTotal) * 100 : 100;
+
+                barCurrent.style.width = `${curPercent.toFixed(3)}%`;
+                timeCurrent.textContent = formatTime(curRemaining);
+
+                if (snapshot.in_meso) {
                     rowMeso.classList.remove('hidden');
-                    const mesoTotal = data.meso_total;
-                    const mesoElapsed = data.meso_elapsed;
+                    const mesoTotal = snapshot.meso_total || 0;
+                    const mesoElapsed = Math.min(mesoTotal, (snapshot.meso_elapsed || 0) + deltaSec);
                     const mesoRemaining = Math.max(0, mesoTotal - mesoElapsed);
-                    
                     const mesoPercent = mesoTotal > 0 ? (mesoElapsed / mesoTotal) * 100 : 100;
-                    
-                    document.getElementById('bar-meso').style.width = `${mesoPercent}%`;
-                    document.getElementById('time-meso').innerText = formatTime(mesoRemaining);
+
+                    barMeso.style.width = `${mesoPercent.toFixed(3)}%`;
+                    timeMeso.textContent = formatTime(mesoRemaining);
                 } else {
                     rowMeso.classList.add('hidden');
                 }
-
-            } catch (error) {
-                console.error('Error fetching status:', error);
             }
+            requestAnimationFrame(renderFrame);
         }
 
-        // Update every 500ms
-        setInterval(updateStatus, 500);
-        updateStatus();
+        async function fetchFallbackStatus() {
+            try {
+                const resp = await fetch('/status');
+                if (resp.ok) {
+                    applySnapshot(await resp.json());
+                }
+            } catch (_) {}
+        }
+
+        function connectSSE() {
+            const es = new EventSource('/events');
+            es.onmessage = (evt) => {
+                try {
+                    applySnapshot(JSON.parse(evt.data));
+                } catch (e) {
+                    console.error('解析状态事件失败:', e);
+                }
+            };
+            es.onerror = () => {
+                fetchFallbackStatus();
+            };
+        }
+
+        requestAnimationFrame(renderFrame);
+        connectSSE();
     </script>
 </body>
 </html>
