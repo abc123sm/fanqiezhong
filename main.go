@@ -156,9 +156,23 @@ func runMesoCycle(index int, isLastMeso bool) {
 
 	fmt.Printf("  >> 计划: %d 个小循环。总时长: %v\n", len(microDurations), targetDuration)
 
+	// 记录开始时间，用于消除时间漂移
+	startTime := time.Now()
+	var cumulativeDuration time.Duration
+
 	for i, duration := range microDurations {
 		fmt.Printf("    > 小循环 %d/%d: %.0f秒\n", i+1, len(microDurations), duration.Seconds())
-		wait(duration)
+
+		// 更新 UI 状态
+		setCurrentTask(duration)
+
+		// 计算目标时间并等待 (绝对时间同步)
+		cumulativeDuration += duration
+		targetTime := startTime.Add(cumulativeDuration)
+		sleepDur := time.Until(targetTime)
+		if sleepDur > 0 {
+			time.Sleep(sleepDur)
+		}
 
 		fmt.Println("    > 小循环结束。")
 		playSound("Sounds/warning.mp3")
@@ -166,7 +180,17 @@ func runMesoCycle(index int, isLastMeso bool) {
 		// 如果不是最后一个小循环，进行小休息
 		if i < len(microDurations)-1 {
 			fmt.Printf("    > 小循环休息 (%d 秒)\n", config.MicroRestS)
-			wait(time.Duration(config.MicroRestS) * time.Second)
+
+			restDur := time.Duration(config.MicroRestS) * time.Second
+			setCurrentTask(restDur)
+
+			cumulativeDuration += restDur
+			targetTime = startTime.Add(cumulativeDuration)
+			sleepDur = time.Until(targetTime)
+			if sleepDur > 0 {
+				time.Sleep(sleepDur)
+			}
+
 			fmt.Println("    > 小循环休息结束。")
 			playSound("Sounds/succeed.mp3")
 		}
