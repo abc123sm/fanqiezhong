@@ -4,7 +4,7 @@
 
 > **设计灵感与科学依据**：本项目参考了 Andrew Huberman 博士的公开文章 [Teach & Learn Better With a “Neuroplasticity Super Protocol”](https://www.hubermanlab.com/newsletter/teach-and-learn-better-with-a-neuroplasticity-super-protocol)，通过科学的随机微休息间隔（间隙效应）、90 分钟超日节律边界与 NSDR 长休息窗口提升学习与深度工作效率。
 > - 📖 **纯深度学习指南**：九步核心原理提炼、程序参数映射及配套用法请参阅 **[《神经可塑性超级协议与设计映射》](./docs/neuroplasticity-protocol.md)**。
-> - 🏋️ **文体两开花玩法（意外发现）**：程序完成后意外发现，`90~150 秒` 随机间隔恰好覆盖肌肉磷酸肌酸（ATP-CP）75%~87.5%+ 的黄金恢复期！将微休息调至 `20~25 秒` 即可兼顾随机间歇爆发力训练与兴趣学习，详见 **[《进阶玩法：文体两开花的体能×学习交叉协议》](./docs/athletic-dual-mode.md)**。
+> - 🏋️ **文体两开花玩法（意外发现）**：程序完成后意外发现，`90~150 秒` 随机间隔恰好覆盖肌肉磷酸肌酸（ATP-CP）75%~87.5%+ 的黄金恢复期！将微休息调至 `20~35 秒` 即可兼顾随机间歇爆发力训练与兴趣学习，详见 **[《进阶玩法：文体两开花的体能×学习交叉协议》](./docs/athletic-dual-mode.md)**。
 
 ## ✨ 核心特性
 
